@@ -1,0 +1,55 @@
+---
+description: 'Flask API endpoint instructions'
+applyTo: 'server/routes/*.py'
+---
+
+# Flask Endpoint Development Guidelines
+
+## Blueprint Structure
+
+- Create Blueprint: `bp_name = Blueprint('name', __name__)`
+- Use descriptive names matching resource (e.g., `games_bp`)
+- Include type hints: `Response`, `tuple[Response, int]`, `Select`
+- Import: `from flask import jsonify, Response, Blueprint`
+
+## Data Access Patterns
+
+- Create base statement functions: `get_<resource>_base_stmt() -> Select`
+- Use SQLAlchemy 2.0 `select()` (not legacy `Query` / `Model.query`)
+- Use outer joins: `isouter=True` for optional relations
+- Use `contains_eager` for optimized eager loading to avoid N+1 queries
+- Return `Select` statements from helpers for reusability across endpoints
+- Execute via `db.session.scalars(stmt).all()` for collections and `db.session.scalars(stmt).one_or_none()` for single rows
+- Use `.unique()` on the scalar result when joining collection relationships to deduplicate parent rows
+
+## Route Definitions
+
+- Full path with methods: `@bp.route('/api/resource', methods=['GET'])`
+- REST conventions: GET (retrieve), POST (create), PUT/PATCH (update)
+- Path params with types: `@bp.route('/api/games/<int:id>')`
+
+## Response Handling
+
+- Use model `to_dict()` for serialization
+- Status codes: 200 (OK), 404 (not found), 400 (bad request)
+- Error format: `{"error": "Resource not found"}`
+- Always use `jsonify()` for JSON responses
+- Non-200 responses: `return jsonify(error), 404`
+
+## Query and Validation
+
+- Filter conditions: `stmt.where(Model.id == id)`
+- Check None: `if not result: return jsonify({"error": "..."}), 404`
+- Apply ordering when needed: `stmt.order_by(Model.field.asc())`
+
+## Required Testing
+
+- All endpoints need unit tests per [unit-tests.instructions.md](./unit-tests.instructions.md)
+- Run tests through the `quality-checks` skill (do not call the test scripts directly)
+- All tests must pass before commit
+
+## Registration & References
+
+- Register in [server/app.py](../../server/app.py): `app.register_blueprint(bp)`
+- Example: [server/routes/games.py](../../server/routes/games.py)
+- Tests: [server/tests/test_games.py](../../server/tests/test_games.py)
